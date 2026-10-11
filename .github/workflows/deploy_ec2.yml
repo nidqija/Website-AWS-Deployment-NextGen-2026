@@ -2,7 +2,7 @@ name: Deploy to EC2
 
 on:
   push:
-    branches: [ master ] # Change to 'main' if your default branch is main
+    branches: [ master ] 
 
 jobs:
   deploy:
@@ -21,23 +21,20 @@ jobs:
             fi
 
             cd /var/www/my-app
+            git fetch origin master
             git reset --hard origin/master
-            git pull origin master
 
-            # 2. Build and restart backend
-            if [ -d "backend" ]; then cd backend; fi
-            npm ci --production
-            pm2 restart node-api || pm2 start index.js --name "node-api"
-
-            # 3. Build and deploy frontend
-            cd /var/www/my-app
-            if [ -d "frontend" ]; then cd frontend; fi
+            # 2. Install dependencies (including Vite for build)
             npm ci
+
+            # 3. Build frontend to dist/
             npm run build
 
-            # 4. Copy build artifacts to Nginx web root
-            BUILD_DIR=$([ -d "dist" ] && echo "dist" || echo "build")
-            sudo cp -r $BUILD_DIR/* /var/www/frontend/
+            # 4. Start or restart Node.js backend API with PM2
+            pm2 restart node-api || pm2 start server.js --name "node-api"
 
-            # 5. Reload Nginx
+            # 5. Copy frontend build artifacts to Nginx web root
+            sudo cp -r dist/* /var/www/frontend/
+
+            # 6. Reload Nginx
             sudo systemctl reload nginx
